@@ -382,6 +382,9 @@ if [ ! -f "$SCRIPT_DIR/config/settings.yaml" ]; then
 # その他の言語コード（es, zh, ko, fr, de 等）も対応
 language: ja
 
+# 足軽人数設定（1〜8名、デフォルト8）
+ashigaru_count: 8
+
 # シェル設定
 # bash: bash用プロンプト（デフォルト）
 # zsh: zsh用プロンプト
