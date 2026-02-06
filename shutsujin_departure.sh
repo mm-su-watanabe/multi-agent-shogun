@@ -606,12 +606,6 @@ if [ "$SETUP_ONLY" = false ]; then
     log_war "📜 各エージェントに指示書を読み込ませ中..."
     echo ""
 
-    echo ""
-    echo -e "                                    \033[1;35m「 天下布武！勝利を掴め！ 」\033[0m"
-    echo ""
-    echo -e "                               \033[0;36m[ASCII Art: syntax-samurai/ryu - CC0 1.0 Public Domain]\033[0m"
-    echo ""
-
     echo "  Claude Code の起動を待機中（最大30秒）..."
 
     # 将軍の起動を確認（最大30秒待機）
