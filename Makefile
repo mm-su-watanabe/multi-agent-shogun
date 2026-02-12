@@ -1,80 +1,130 @@
-# =============================================================================
-# multi-agent-shogun Makefile
-# =============================================================================
-# マルチエージェント並列開発基盤の操作コマンド集
-# =============================================================================
+.PHONY: test build lint check help install-deps clean
 
-.PHONY: help setup start start-setup stop status attach-shogun attach-agents
-
-# デフォルトターゲット: ヘルプを表示
-.DEFAULT_GOAL := help
-
-# -----------------------------------------------------------------------------
-# setup: 初回セットアップ
-# -----------------------------------------------------------------------------
-# first_setup.sh を実行し、必要な設定を行う
-setup:
-	@./first_setup.sh
-
-# -----------------------------------------------------------------------------
-# start: 出陣（全エージェント起動）
-# -----------------------------------------------------------------------------
-# shutsujin_departure.sh を実行し、将軍・家老・足軽を起動
-shutsujin:
-	@./shutsujin_departure.sh
-
-# -----------------------------------------------------------------------------
-# start-setup: セットアップのみ（Claude起動なし）
-# -----------------------------------------------------------------------------
-# tmuxセッションの準備のみ行い、Claudeは起動しない
-start-setup:
-	@./shutsujin_departure.sh -s
-
-# -----------------------------------------------------------------------------
-# stop: 全セッション終了
-# -----------------------------------------------------------------------------
-# shogun と multiagent セッションを終了
-stop:
-	@tmux kill-session -t shogun 2>/dev/null || true
-	@tmux kill-session -t multiagent 2>/dev/null || true
-	@echo "全セッションを終了いたした"
-
-# -----------------------------------------------------------------------------
-# status: セッション状態確認
-# -----------------------------------------------------------------------------
-# 現在のtmuxセッション一覧を表示
-status:
-	@tmux list-sessions 2>/dev/null || echo "起動中のセッションはござらぬ"
-
-# -----------------------------------------------------------------------------
-# attach-shogun: 将軍セッションにアタッチ
-# -----------------------------------------------------------------------------
-# shogun セッション（将軍ペイン）に接続する
-attach-shogun:
-	@tmux attach -t shogun
-
-# -----------------------------------------------------------------------------
-# attach-multiagent: 家老・足軽セッションにアタッチ
-# -----------------------------------------------------------------------------
-# multiagent セッション（家老・足軽ペイン）に接続する
-attach-agents:
-	@tmux attach -t multiagent
-
-# -----------------------------------------------------------------------------
-# help: ヘルプ表示
-# -----------------------------------------------------------------------------
-# 各ターゲットの説明を表示
+# Default target
 help:
-	@echo "=============================================="
-	@echo " multi-agent-shogun コマンド一覧"
-	@echo "=============================================="
+	@echo "Multi-CLI Shogun - Development Commands"
 	@echo ""
-	@echo "  make setup             : 初回セットアップを実行"
-	@echo "  make shutsujin         : 出陣（全エージェント起動）"
-	@echo "  make start-setup       : セットアップのみ（Claude起動なし）"
-	@echo "  make stop              : 全セッション終了"
-	@echo "  make status            : セッション状態確認"
-	@echo "  make attach-shogun     : 将軍セッションにアタッチ"
-	@echo "  make attach-agents     : 家老・足軽セッションにアタッチ"
-	@echo "  make help              : このヘルプを表示"
+	@echo "Available targets:"
+	@echo "  make test          - Run bats unit tests"
+	@echo "  make test-int      - Run bats integration tests"
+	@echo "  make build         - Run build_instructions.sh"
+	@echo "  make lint          - Run shellcheck on lib/ and scripts/"
+	@echo "  make check         - Run build + diff check (CI equivalent)"
+	@echo "  make install-deps  - Install test dependencies (bats, helpers)"
+	@echo "  make clean         - Clean test artifacts"
 	@echo ""
+
+# Run unit tests
+test:
+	@echo "Running unit tests..."
+	@if ! command -v bats >/dev/null 2>&1; then \
+		echo "ERROR: bats not installed. Run 'make install-deps' first."; \
+		exit 1; \
+	fi
+	@if ls tests/*.bats 1>/dev/null 2>&1; then \
+		echo "--- Root-level tests ---"; \
+		bats tests/*.bats --timing; \
+	fi
+	@if [ -d tests/unit ] && ls tests/unit/*.bats 1>/dev/null 2>&1; then \
+		echo "--- Unit tests ---"; \
+		bats tests/unit/ --timing; \
+	fi
+
+# Run integration tests
+test-int:
+	@echo "Running integration tests (Claude only)..."
+	@if [ ! -d tests/integration ]; then \
+		echo "ERROR: tests/integration directory not found"; \
+		exit 1; \
+	fi
+	@if ! command -v bats >/dev/null 2>&1; then \
+		echo "ERROR: bats not installed. Run 'make install-deps' first."; \
+		exit 1; \
+	fi
+	bats tests/integration/ --filter-tags '!copilot,!codex' --timing
+
+# Run all tests
+test-all: test test-int
+
+# Build instructions (Phase 2 feature)
+build:
+	@echo "Building instruction files..."
+	@if [ -f scripts/build_instructions.sh ]; then \
+		bash scripts/build_instructions.sh; \
+	else \
+		echo "WARNING: scripts/build_instructions.sh not found"; \
+		echo "This will be available in Phase 2 (template generation)"; \
+	fi
+
+# Run shellcheck linter
+lint:
+	@echo "Running shellcheck..."
+	@if ! command -v shellcheck >/dev/null 2>&1; then \
+		echo "ERROR: shellcheck not installed"; \
+		echo "Install: sudo apt-get install shellcheck (Linux) or brew install shellcheck (Mac)"; \
+		exit 1; \
+	fi
+	@echo "Checking lib/..."
+	@if [ -d lib ]; then \
+		find lib -name '*.sh' -type f -exec shellcheck {} \; ; \
+	fi
+	@echo "Checking scripts/..."
+	@if [ -d scripts ]; then \
+		find scripts -name '*.sh' -type f -exec shellcheck {} \; ; \
+	fi
+	@echo "✓ Shellcheck passed"
+
+# Build + diff check (CI equivalent)
+check: build
+	@echo "Checking for uncommitted instruction changes..."
+	@if [ -f scripts/build_instructions.sh ] && [ -d instructions/generated ]; then \
+		if git diff --exit-code instructions/generated/; then \
+			echo "✓ Generated instructions are in sync"; \
+		else \
+			echo "ERROR: Generated instructions are out of sync!"; \
+			echo "Run 'make build' and commit the changes."; \
+			exit 1; \
+		fi; \
+	else \
+		echo "WARNING: build_instructions.sh or instructions/generated not found"; \
+		echo "Skipping diff check (Phase 2 feature)"; \
+	fi
+
+# Install test dependencies
+install-deps:
+	@echo "Installing test dependencies..."
+	@echo "1. Installing bats-core..."
+	@if command -v npm >/dev/null 2>&1; then \
+		npm install -g bats; \
+	else \
+		echo "ERROR: npm not found. Install Node.js first."; \
+		echo "Alternatively: brew install bats-core (Mac) or apt-get install bats (Linux)"; \
+		exit 1; \
+	fi
+	@echo "2. Setting up bats helpers..."
+	@mkdir -p tests/test_helper
+	@if [ ! -d tests/test_helper/bats-support ]; then \
+		git clone --depth 1 https://github.com/bats-core/bats-support tests/test_helper/bats-support; \
+	fi
+	@if [ ! -d tests/test_helper/bats-assert ]; then \
+		git clone --depth 1 https://github.com/bats-core/bats-assert tests/test_helper/bats-assert; \
+	fi
+	@echo "3. Checking system dependencies..."
+	@if ! command -v python3 >/dev/null 2>&1; then \
+		echo "WARNING: python3 not found (required for YAML parsing)"; \
+	fi
+	@if ! python3 -c "import yaml" 2>/dev/null; then \
+		echo "WARNING: python3-yaml not found"; \
+		echo "Install: sudo apt-get install python3-yaml (Linux) or pip3 install pyyaml (Mac)"; \
+	fi
+	@echo "✓ Dependencies installed"
+
+# Clean test artifacts
+clean:
+	@echo "Cleaning test artifacts..."
+	@find tests -name '*.tap' -type f -delete 2>/dev/null || true
+	@echo "✓ Cleaned"
+
+# Quick development workflow
+dev: lint test
+	@echo "✓ Development checks passed"
