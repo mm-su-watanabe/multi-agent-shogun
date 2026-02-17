@@ -763,7 +763,7 @@ if [ "$SETUP_ONLY" = false ]; then
         p=$((PANE_BASE + i))
         _ashi_cli=$(tmux show-options -p -t "multiagent:agents.${p}" -v @agent_cli 2>/dev/null || echo "claude")
         if [ "$_ashi_cli" = "claude" ] || [ "$_ashi_cli" = "agent" ]; then
-            _ashi_instruction=$(get_instruction_file "ashigaru${i}" "$_ashi_cli")
+            _ashi_instruction=$(get_instruction_file "ashigaru" "$_ashi_cli")
             tmux send-keys -t "multiagent:agents.${p}" "Read $_ashi_instruction"
             sleep 1
             tmux send-keys -t "multiagent:agents.${p}" Enter
