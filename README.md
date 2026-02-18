@@ -10,7 +10,7 @@ Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copi
 
 [![GitHub Stars](https://img.shields.io/github/stars/yohey-w/multi-agent-shogun?style=social)](https://github.com/yohey-w/multi-agent-shogun)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![v3.0 Multi-CLI](https://img.shields.io/badge/v3.0-Multi--CLI_Support-ff6600?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHRleHQgeD0iMCIgeT0iMTIiIGZvbnQtc2l6ZT0iMTIiPuKalTwvdGV4dD48L3N2Zz4=)](https://github.com/yohey-w/multi-agent-shogun)
+[![v3.4 Bloom→Agent Routing](https://img.shields.io/badge/v3.4-Bloom→Agent_Routing-ff6600?style=flat-square&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiI+PHRleHQgeD0iMCIgeT0iMTIiIGZvbnQtc2l6ZT0iMTIiPuKalTwvdGV4dD48L3N2Zz4=)](https://github.com/yohey-w/multi-agent-shogun)
 [![Shell](https://img.shields.io/badge/Shell%2FBash-100%25-green)]()
 
 [English](README.md) | [日本語](README_ja.md)
@@ -26,7 +26,7 @@ Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copi
   <img src="images/company-creed-all-panes.png" alt="Karo and Ashigaru panes reacting in parallel" width="520">
 </p>
 
-<p align="center"><i>One Karo (manager) coordinating 8 Ashigaru (workers) — real session, no mock data.</i></p>
+<p align="center"><i>One Karo (manager) coordinating 7 Ashigaru (workers) + 1 Gunshi (strategist) — real session, no mock data.</i></p>
 
 ---
 
@@ -35,7 +35,7 @@ Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copi
 **multi-agent-shogun** is a system that runs multiple AI coding CLI instances simultaneously, orchestrating them like a feudal Japanese army. Supports **Claude Code**, **OpenAI Codex**, **GitHub Copilot**, and **Kimi Code**.
 
 **Why use it?**
-- One command spawns 8 AI workers executing in parallel
+- One command spawns 7 AI workers + 1 strategist executing in parallel
 - Zero wait time — give your next order while tasks run in the background
 - AI remembers your preferences across sessions (Memory MCP)
 - Real-time progress on a dashboard
@@ -52,10 +52,10 @@ Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copi
       │    KARO     │  ← Distributes tasks to workers
       └──────┬──────┘
              │
-    ┌─┬─┬─┬─┴─┬─┬─┬─┐
-    │1│2│3│4│5│6│7│8│  ← 8 workers execute in parallel
-    └─┴─┴─┴─┴─┴─┴─┴─┘
-         ASHIGARU
+    ┌─┬─┬─┬─┴─┬─┬─┬─┬────────┐
+    │1│2│3│4│5│6│7│ GUNSHI │  ← 7 workers + 1 strategist
+    └─┴─┴─┴─┴─┴─┴─┴────────┘
+       ASHIGARU      軍師
 ```
 
 ---
@@ -64,14 +64,15 @@ Run 10 AI coding agents in parallel — **Claude Code, OpenAI Codex, GitHub Copi
 
 Most multi-agent frameworks burn API tokens on coordination. Shogun doesn't.
 
-| | Claude Code `Task` tool | LangGraph | CrewAI | **multi-agent-shogun** |
-|---|---|---|---|---|
-| **Architecture** | Subagents inside one process | Graph-based state machine | Role-based agents | Feudal hierarchy via tmux |
-| **Parallelism** | Sequential (one at a time) | Parallel nodes (v0.2+) | Limited | **8 independent agents** |
-| **Coordination cost** | API calls per Task | API + infra (Postgres/Redis) | API + CrewAI platform | **Zero** (YAML + tmux) |
-| **Observability** | Claude logs only | LangSmith integration | OpenTelemetry | **Live tmux panes** + dashboard |
-| **Skill discovery** | None | None | None | **Bottom-up auto-proposal** |
-| **Setup** | Built into Claude Code | Heavy (infra required) | pip install | Shell scripts |
+| | Claude Code `Task` tool | Claude Code Agent Teams | LangGraph | CrewAI | **multi-agent-shogun** |
+|---|---|---|---|---|---|
+| **Architecture** | Subagents inside one process | Team lead + teammates (JSON mailbox) | Graph-based state machine | Role-based agents | Feudal hierarchy via tmux |
+| **Parallelism** | Sequential (one at a time) | Multiple independent sessions | Parallel nodes (v0.2+) | Limited | **8 independent agents** |
+| **Coordination cost** | API calls per Task | Token-heavy (each teammate = separate context) | API + infra (Postgres/Redis) | API + CrewAI platform | **Zero** (YAML + tmux) |
+| **Multi-CLI** | Claude Code only | Claude Code only | Any LLM API | Any LLM API | **4 CLIs** (Claude/Codex/Copilot/Kimi) |
+| **Observability** | Claude logs only | tmux split-panes or in-process | LangSmith integration | OpenTelemetry | **Live tmux panes** + dashboard |
+| **Skill discovery** | None | None | None | None | **Bottom-up auto-proposal** |
+| **Setup** | Built into Claude Code | Built-in (experimental) | Heavy (infra required) | pip install | Shell scripts |
 
 ### What makes this different
 
@@ -103,7 +104,7 @@ Shogun isn't locked to one vendor. The system supports 4 CLI tools, each with un
 | CLI | Key Strength | Default Model |
 |-----|-------------|---------------|
 | **Claude Code** | Battle-tested tmux integration, Memory MCP, dedicated file tools (Read/Write/Edit/Glob/Grep) | Claude Sonnet 4.5 |
-| **OpenAI Codex** | Sandbox execution, JSONL structured output, `codex exec` headless mode | gpt-5.3-codex |
+| **OpenAI Codex** | Sandbox execution, JSONL structured output, `codex exec` headless mode, **per-model `--model` flag** | gpt-5.3-codex / **gpt-5.3-codex-spark** |
 | **GitHub Copilot** | Built-in GitHub MCP, 4 specialized agents (Explore/Task/Plan/Code-review), `/delegate` to coding agent | Claude Sonnet 4.5 |
 | **Kimi Code** | Free tier available, strong multilingual support | Kimi k2 |
 
@@ -279,7 +280,16 @@ Control your AI army from your phone — bed, café, or bathroom.
    csm    # See all 9 panes
    ```
 
-**Disconnect:** Just swipe the Termux window closed. tmux sessions survive — agents keep working.
+**Disconnect:** Just swipe the Termux window closed. tmux sessions survive — agents keep working. Temporary viewer sessions are auto-cleaned (destroy-unattached).
+
+**Recommended: SSH keepalive** — prevents zombie connections when Termux is swiped away:
+```bash
+# On your server (WSL), run once:
+sudo sed -i 's/#ClientAliveInterval 0/ClientAliveInterval 15/' /etc/ssh/sshd_config
+sudo sed -i 's/#ClientAliveCountMax 3/ClientAliveCountMax 3/' /etc/ssh/sshd_config
+sudo systemctl restart ssh
+```
+This detects dead connections within 45 seconds instead of waiting for TCP timeout.
 
 **Voice input:** Use your phone's voice keyboard to speak commands. The Shogun understands natural language, so typos from speech-to-text don't matter.
 
@@ -396,12 +406,13 @@ Whichever option you chose, **10 AI agents** are automatically launched:
 | Agent | Role | Count |
 |-------|------|-------|
 | 🏯 Shogun | Supreme commander — receives your orders | 1 |
-| 📋 Karo | Manager — distributes tasks | 1 |
-| ⚔️ Ashigaru | Workers — execute tasks in parallel | 8 |
+| 📋 Karo | Manager — distributes tasks, quality checks | 1 |
+| ⚔️ Ashigaru | Workers — execute implementation tasks in parallel | 7 |
+| 🧠 Gunshi | Strategist — handles analysis, evaluation, and design | 1 |
 
 Two tmux sessions are created:
 - `shogun` — connect here to give commands
-- `multiagent` — workers running in the background
+- `multiagent` — Karo, Ashigaru, and Gunshi running in the background
 
 ---
 
@@ -560,7 +571,45 @@ Step 3: Agent reads its own inbox
 - **Zero CPU while idle** — `inotifywait` blocks on a kernel event (not a poll loop). CPU usage is 0% between messages.
 - **Guaranteed delivery** — If the file write succeeded, the message is there. No lost messages, no retries needed.
 
-### 📸 5. Screenshot Integration
+### 📊 5. Agent Status Check
+
+See which agents are busy or idle — instantly, from one command:
+
+```bash
+# Project mode: full status with task/inbox info
+bash scripts/agent_status.sh
+
+# Standalone mode: works with any tmux session
+bash scripts/agent_status.sh --session mysession --lang en
+```
+
+**Project mode output:**
+```
+Agent      CLI     Pane      Task ID                                    Status     Inbox
+---------- ------- --------- ------------------------------------------ ---------- -----
+karo       claude  待機中    ---                                        ---        0
+ashigaru1  codex   稼働中    subtask_042a_research                      assigned   0
+ashigaru2  codex   待機中    subtask_042b_review                        done       0
+gunshi     claude  稼働中    subtask_042c_analysis                      assigned   0
+```
+
+**Standalone mode output** (no project config needed):
+```
+Pane                           State      Agent ID
+------------------------------ ---------- ----------
+multiagent:agents.0            IDLE       karo
+multiagent:agents.1            BUSY       ashigaru1
+multiagent:agents.8            BUSY       gunshi
+```
+
+Detection works for both **Claude Code** and **Codex CLI** by checking CLI-specific prompt/spinner patterns in the bottom 5 lines of each tmux pane. The detection logic lives in `lib/agent_status.sh` — source it in your own scripts:
+
+```bash
+source lib/agent_status.sh
+agent_is_busy_check "multiagent:agents.3" && echo "busy" || echo "idle"
+```
+
+### 📸 6. Screenshot Integration
 
 VSCode's Claude Code extension lets you paste screenshots to explain issues. This CLI system provides the same capability:
 
@@ -584,7 +633,7 @@ Use cases:
 - Show error messages
 - Compare before/after states
 
-### 📁 6. Context Management (4-Layer Architecture)
+### 📁 7. Context Management (4-Layer Architecture)
 
 Efficient knowledge sharing through a four-layer context system:
 
@@ -633,13 +682,13 @@ This unified format enables:
 - Consistent information management across all projects
 - Easy handoff between Ashigaru workers
 
-### 📱 7. Phone Notifications (ntfy)
+### 📱 8. Phone Notifications (ntfy)
 
 Two-way communication between your phone and the Shogun — no SSH, no Tailscale, no server needed.
 
 | Direction | How it works |
 |-----------|-------------|
-| **Phone → Shogun** | Send a message from the ntfy app → `ntfy_listener.sh` receives it via streaming → Shogun processes automatically |
+| **Phone → Shogun** | Send a message from the ntfy app → `ntfy_listener.sh` receives it via streaming → auto-ACK reply (`📱受信: {your message}`) sent back to your phone → Shogun processes automatically |
 | **Karo → Phone (direct)** | When Karo updates `dashboard.md`, it sends push notifications directly via `scripts/ntfy.sh` — **Shogun is bypassed** (Shogun is for human interaction, not progress reporting) |
 
 ```
@@ -747,7 +796,7 @@ Behavioral psychology-driven motivation through your notification feed:
 - **Eat the Frog** 🐸: The hardest task of the day is marked as the "Frog." Completing it triggers a special celebration notification
 - **Daily progress**: `12/12 tasks today` — visual completion feedback reinforces the Arbeitslust effect (joy of work-in-progress)
 
-### 🖼️ 8. Pane Border Task Display
+### 🖼️ 9. Pane Border Task Display
 
 Each tmux pane shows the agent's current task directly on its border:
 
@@ -768,7 +817,7 @@ Each tmux pane shows the agent's current task directly on its border:
 - Updated automatically by the Karo when assigning or completing tasks
 - Glance at all 9 panes to instantly know who's doing what
 
-### 🔊 9. Shout Mode (Battle Cries)
+### 🔊 10. Shout Mode (Battle Cries)
 
 When an Ashigaru completes a task, it shouts a personalized battle cry in the tmux pane — a visual reminder that your army is working hard.
 
@@ -898,38 +947,29 @@ SayTask handles personal productivity (capture → schedule → remind). The cmd
 
 ## Model Settings
 
-| Agent | Default Model | Thinking | Rationale |
-|-------|--------------|----------|-----------|
-| Shogun | Opus | **Enabled (high)** | Strategic discussions, research, and policy design require deep reasoning. Use `--shogun-no-thinking` to disable for relay-only mode |
-| Karo | Opus | Enabled | Task distribution requires careful judgment |
-| Ashigaru 1–4 | Sonnet | Enabled | Cost-efficient for standard tasks |
-| Ashigaru 5–8 | Opus | Enabled | Full capability for complex tasks |
+| Agent | Default Model | Thinking | Role |
+|-------|--------------|----------|------|
+| Shogun | Opus | **Enabled (high)** | Strategic advisor to the Lord. Use `--shogun-no-thinking` for relay-only mode |
+| Karo | Sonnet | Enabled | Task distribution, simple QC, dashboard management |
+| Gunshi | Opus | Enabled | Deep analysis, design review, architecture evaluation |
+| Ashigaru 1–7 | Sonnet | Enabled | Implementation: code, research, file operations |
 
-The Shogun serves as the Lord's strategic advisor — not just a task relay. Strategic discussions, research analysis, and policy design are Bloom's Taxonomy Level 4–6 (analysis, evaluation, creation), requiring Thinking mode enabled. For relay-only use, disable with `--shogun-no-thinking`.
+The system splits work by **cognitive complexity**, not model tier. Ashigaru handle implementation (L1–L3), while the Gunshi handles tasks requiring deep reasoning (L4–L6). This eliminates the need for dynamic model switching — the right agent gets the right task from the start.
 
-### Battle Formations
+### Bloom's Taxonomy → Agent Routing
 
-| Formation | Ashigaru 1–4 | Ashigaru 5–8 | Command |
-|-----------|-------------|-------------|---------|
-| **Normal** (default) | Sonnet | Opus | `./shutsujin_departure.sh` |
-| **Battle** (`-k` flag) | Opus | Opus | `./shutsujin_departure.sh -k` |
+Tasks are classified using Bloom's Taxonomy and routed to the appropriate **agent**, not model:
 
-Half the squad runs on the cheaper Sonnet model by default. When it's crunch time, switch to Battle formation with `-k` (`--kessen`) for all-Opus maximum capability. The Karo can also promote individual Ashigaru mid-session with `/model opus` when a specific task demands it.
+| Level | Category | Description | Routed To |
+|-------|----------|-------------|-----------|
+| L1 | Remember | Recall facts, copy, list | **Ashigaru** |
+| L2 | Understand | Explain, summarize, paraphrase | **Ashigaru** |
+| L3 | Apply | Execute procedures, implement known patterns | **Ashigaru** |
+| L4 | Analyze | Compare, investigate, deconstruct | **Gunshi** |
+| L5 | Evaluate | Judge, critique, recommend | **Gunshi** |
+| L6 | Create | Design, build, synthesize new solutions | **Gunshi** |
 
-### Bloom's Taxonomy Task Classification
-
-Tasks are classified using Bloom's Taxonomy to optimize model assignment:
-
-| Level | Category | Description | Model |
-|-------|----------|-------------|-------|
-| L1 | Remember | Recall facts, copy, list | Sonnet |
-| L2 | Understand | Explain, summarize, paraphrase | Sonnet |
-| L3 | Apply | Execute procedures, implement known patterns | Sonnet |
-| L4 | Analyze | Compare, investigate, deconstruct | Opus |
-| L5 | Evaluate | Judge, critique, recommend | Opus |
-| L6 | Create | Design, build, synthesize new solutions | Opus |
-
-The Karo assigns each subtask a Bloom level and routes it to the appropriate agent tier. This ensures cost-efficient execution: routine work goes to Sonnet, while complex reasoning goes to Opus.
+The Karo assigns each subtask a Bloom level and routes it to the appropriate agent. L1–L3 tasks go to Ashigaru for parallel execution; L4–L6 tasks go to the Gunshi for deeper analysis. Simple L4 tasks (e.g., small code review) may still go to Ashigaru when the Karo judges it appropriate.
 
 ### Task Dependencies (blockedBy)
 
@@ -944,6 +984,37 @@ task:
 ```
 
 When a blocking task completes, the Karo automatically unblocks dependent tasks and assigns them to available Ashigaru. This prevents idle waiting and enables efficient pipelining of dependent work.
+
+### Dynamic Model Routing (capability_tiers)
+
+Beyond agent-level routing, you can configure **model-level routing within the Ashigaru tier**. Define a `capability_tiers` table in `config/settings.yaml` mapping each model to its maximum Bloom level:
+
+```yaml
+capability_tiers:
+  gpt-5.3-codex-spark:
+    max_bloom: 3       # L1–L3 only: fast, high-volume tasks
+    cost_group: chatgpt_pro
+  gpt-5.3-codex:
+    max_bloom: 4       # L1–L4: + analysis and debugging
+    cost_group: chatgpt_pro
+  claude-sonnet-4-6:
+    max_bloom: 5       # L1–L5: + design evaluation
+    cost_group: claude_max
+  claude-opus-4-6:
+    max_bloom: 6       # L1–L6: + novel architecture, strategy
+    cost_group: claude_max
+```
+
+The `cost_group` field links each model to your subscription plan, enabling the system to avoid routing tasks to models your plan doesn't cover.
+
+Two built-in skills help you configure this:
+
+| Skill | Purpose |
+|-------|---------|
+| `/shogun-model-list` | Reference table: all models × subscriptions × Bloom max |
+| `/shogun-bloom-config` | Interactive: answer 2 questions → get ready-to-paste YAML |
+
+Run `/shogun-bloom-config` after setup to generate your optimal `capability_tiers` configuration.
 
 ---
 
@@ -1016,9 +1087,20 @@ No skills are included out of the box. Skills emerge organically during operatio
 
 Invoke skills with `/skill-name`. Just tell the Shogun: "run /skill-name".
 
+### Included Skills (committed to repo)
+
+Two skills ship with the repository in `skills/`. They are domain-agnostic setup utilities useful for any user:
+
+| Skill | Description |
+|-------|-------------|
+| `/shogun-model-list` | Reference table: all CLI tools × models × subscriptions × Bloom max level |
+| `/shogun-bloom-config` | Interactive configurator: answer 2 questions about your subscriptions → get ready-to-paste `capability_tiers` YAML |
+
+These are intentionally minimal — they help you configure the system, not do your work for you.
+
 ### Skill Philosophy
 
-**1. Skills are not committed to the repo**
+**1. Personal skills are not committed to the repo**
 
 Skills in `.claude/commands/` are excluded from version control by design:
 - Every user's workflow is different
@@ -1349,15 +1431,18 @@ multi-agent-shogun/
 │   ├── shogun.md             # Shogun instructions
 │   ├── karo.md               # Karo instructions
 │   ├── ashigaru.md           # Ashigaru instructions
+│   ├── gunshi.md             # Gunshi (strategist) instructions
 │   └── cli_specific/         # CLI-specific tool descriptions
 │       ├── claude_tools.md   # Claude Code tools & features
 │       └── copilot_tools.md  # GitHub Copilot CLI tools & features
 │
 ├── lib/
+│   ├── agent_status.sh       # Shared busy/idle detection (Claude Code + Codex)
 │   ├── cli_adapter.sh        # Multi-CLI adapter (Claude/Codex/Copilot/Kimi)
 │   └── ntfy_auth.sh          # ntfy authentication helper
 │
 ├── scripts/                  # Utility scripts
+│   ├── agent_status.sh       # Show busy/idle status of all agents
 │   ├── inbox_write.sh        # Write messages to agent inbox
 │   ├── inbox_watcher.sh      # Watch inbox changes via inotifywait
 │   ├── ntfy.sh               # Send push notifications to phone
@@ -1541,6 +1626,36 @@ tmux respawn-pane -t shogun:0.0 -k 'claude --model opus --dangerously-skip-permi
 Even if you're not comfortable with keyboard shortcuts, you can switch, scroll, and resize panes using just the mouse.
 
 ---
+
+## What's New in v3.4 — Bloom→Agent Routing, E2E Tests, Stop Hook
+
+> **Tasks are now routed by cognitive complexity to the right agent — not by switching models.** Plus comprehensive E2E test coverage and zero-interruption inbox delivery.
+
+- **Bloom → Agent routing** — Replaced dynamic model switching with agent-level routing. L1–L3 tasks go to Ashigaru (Sonnet), L4–L6 tasks go to Gunshi (Opus). No more mid-session `/model opus` promotions — the Karo routes to the right agent from the start
+- **Gunshi (軍師) as first-class agent** — Strategic advisor on pane 8. Handles deep analysis, design review, architecture evaluation, and complex QC. Ashigaru focus on implementation only
+- **E2E test suite (19 tests, 7 scenarios)** — Mock CLI framework simulates agent behavior in isolated tmux sessions. Covers: basic flow, inbox delivery, /clear recovery, escalation, redo, parallel tasks, and blocked_by dependencies
+- **Stop hook inbox delivery** — Claude Code agents automatically check inbox at turn end via `.claude/settings.json` Stop hook. Eliminates the `send-keys` interruption problem entirely for Claude Code agents
+- **Model defaults updated** — Karo: Opus → Sonnet (task distribution doesn't need Opus). All Ashigaru: Sonnet (uniform tier). Gunshi: Opus (deep reasoning)
+
+<details>
+<summary><b>What was in v3.4</b></summary>
+
+- **Stop hook inbox delivery** — Claude Code agents automatically check inbox at turn end via `.claude/settings.json` Stop hook
+- **Escape escalation disabled for Claude Code** — Phase 2 escalation (Escape×2 + C-c) was interrupting active Claude Code turns. Now suppressed; Stop hook handles delivery instead
+- **Gunshi (軍師) role introduced** — New strategic advisor agent (pane 8). Replaces ashigaru8
+- **Codex CLI startup prompt** — `get_startup_prompt()` in `cli_adapter.sh` passes initial `[PROMPT]` argument to Codex CLI launch
+- **Session Start identity protection** — Agents must complete Steps 1-3 before processing inbox
+- **YAML slimming utility** — `scripts/slim_yaml.sh` archives read messages and completed commands
+
+</details>
+
+## What's New in v3.3.2 — GPT-5.3-Codex-Spark Support
+
+> **New model, same YAML.** Add `model: gpt-5.3-codex-spark` to any Codex agent in `settings.yaml`.
+
+- **Codex `--model` flag support** — `build_cli_command()` now passes `settings.yaml` model config to the Codex CLI via `--model`. Supports `gpt-5.3-codex-spark` and any future Codex models
+- **Separate rate limit** — Spark runs on its own rate limit quota, independent of GPT-5.3-Codex. Run both models in parallel across different Ashigaru to **double your effective throughput**
+- **Startup display** — `shutsujin_departure.sh` now shows the actual model name (e.g., `codex/gpt-5.3-codex-spark`) instead of the generic effort level
 
 ## What's New in v3.0 — Multi-CLI
 

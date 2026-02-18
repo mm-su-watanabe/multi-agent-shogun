@@ -194,9 +194,10 @@ MOCK
     grep -q "send-keys -t test:0.0 Enter" "$MOCK_LOG"
 }
 
-# --- T-SW-004: send-keys failure → return 1 ---
+# --- T-SW-004: send-keys failure → return 0 (daemon-safe) + WARNING log ---
+# send_wakeup always returns 0 to avoid killing the watcher under set -euo pipefail.
 
-@test "T-SW-004: send_wakeup returns 1 when send-keys fails" {
+@test "T-SW-004: send_wakeup returns 0 when send-keys fails (daemon-safe)" {
     run bash -c "MOCK_SENDKEYS_RC=1; source '$TEST_HARNESS' && send_wakeup 2"
     [ "$status" -eq 0 ]
 
