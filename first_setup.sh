@@ -641,8 +641,29 @@ RESULTS+=("設定ファイル: OK")
 # ============================================================
 log_step "STEP 8: キューファイル初期化"
 
+# 足軽数を settings.yaml から動的に取得（設定がなければデフォルト7）
+_SETUP_VENV_PYTHON="$SCRIPT_DIR/.venv/bin/python3"
+_SETUP_ASHIGARU_COUNT=$(
+    if [[ -x "$_SETUP_VENV_PYTHON" ]]; then
+        "$_SETUP_VENV_PYTHON" -c "
+import yaml
+try:
+    with open('$SCRIPT_DIR/config/settings.yaml') as f:
+        cfg = yaml.safe_load(f) or {}
+    agents = cfg.get('cli', {}).get('agents', {})
+    count = len([k for k in agents if k.startswith('ashigaru')])
+    print(count if count > 0 else 7)
+except Exception:
+    print(7)
+" 2>/dev/null
+    else
+        echo 7
+    fi
+)
+_SETUP_ASHIGARU_COUNT=${_SETUP_ASHIGARU_COUNT:-7}
+
 # 足軽用タスクファイル作成
-for i in {1..8}; do
+for i in $(seq 1 "$_SETUP_ASHIGARU_COUNT"); do
     TASK_FILE="$SCRIPT_DIR/queue/tasks/ashigaru${i}.yaml"
     if [ ! -f "$TASK_FILE" ]; then
         cat > "$TASK_FILE" << EOF
@@ -657,10 +678,10 @@ task:
 EOF
     fi
 done
-log_info "足軽タスクファイル (1-8) を確認/作成しました"
+log_info "足軽タスクファイル (1-${_SETUP_ASHIGARU_COUNT}) を確認/作成しました"
 
 # 足軽用レポートファイル作成
-for i in {1..8}; do
+for i in $(seq 1 "$_SETUP_ASHIGARU_COUNT"); do
     REPORT_FILE="$SCRIPT_DIR/queue/reports/ashigaru${i}_report.yaml"
     if [ ! -f "$REPORT_FILE" ]; then
         cat > "$REPORT_FILE" << EOF
@@ -672,7 +693,7 @@ result: null
 EOF
     fi
 done
-log_info "足軽レポートファイル (1-8) を確認/作成しました"
+log_info "足軽レポートファイル (1-${_SETUP_ASHIGARU_COUNT}) を確認/作成しました"
 
 RESULTS+=("キューファイル: OK")
 
@@ -704,57 +725,60 @@ log_step "STEP 10: alias設定"
 # alias追加対象ファイル
 BASHRC_FILE="$HOME/.bashrc"
 
-# aliasが既に存在するかチェックし、なければ追加
+# css/csm を関数として定義（destroy-unattached で自動掃除）
+# - 複数端末から接続しても画面サイズが干渉しない
+# - SSH切断・アプリ終了時に一時セッションが自動消滅
+# - 本体セッション (shogun/multiagent) は絶対に消えない
+CSS_FUNC='css() { local s="shogun-$$"; local cols=$(tput cols 2>/dev/null || echo 80); tmux new-session -d -t shogun -s "$s" 2>/dev/null && tmux set-option -t "$s" destroy-unattached on 2>/dev/null; if [ "$cols" -lt 80 ]; then tmux new-window -t "$s" -n mobile 2>/dev/null; tmux attach-session -t "$s:mobile" 2>/dev/null || tmux attach-session -t shogun; else tmux attach-session -t "$s" 2>/dev/null || tmux attach-session -t shogun; fi; }'
+CSM_FUNC='csm() { local s="multi-$$"; local cols=$(tput cols 2>/dev/null || echo 80); tmux new-session -d -t multiagent -s "$s" 2>/dev/null && tmux set-option -t "$s" destroy-unattached on 2>/dev/null; if [ "$cols" -lt 80 ]; then tmux new-window -t "$s" -n mobile 2>/dev/null; tmux attach-session -t "$s:mobile" 2>/dev/null || tmux attach-session -t multiagent; else tmux attach-session -t "$s" 2>/dev/null || tmux attach-session -t multiagent; fi; }'
+
 ALIAS_ADDED=false
 
-# css alias (将軍ウィンドウの起動)
 if [ -f "$BASHRC_FILE" ]; then
-    EXPECTED_CSS="alias css='tmux attach-session -t shogun'"
-    if ! grep -q "alias css=" "$BASHRC_FILE" 2>/dev/null; then
-        # alias が存在しない → 新規追加
-        echo "" >> "$BASHRC_FILE"
-        echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
-        echo "$EXPECTED_CSS" >> "$BASHRC_FILE"
-        log_info "alias css を追加しました（将軍ウィンドウの起動）"
-        ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CSS" "$BASHRC_FILE" 2>/dev/null; then
-        # alias は存在するがパスが異なる → 更新
-        if sed -i "s|alias css=.*|$EXPECTED_CSS|" "$BASHRC_FILE" 2>/dev/null; then
-            log_info "alias css を更新しました（パス変更検出）"
-        else
-            log_warn "alias css の更新に失敗しました"
-        fi
-        ALIAS_ADDED=true
-    else
-        log_info "alias css は既に正しく設定されています"
+    # 古い alias 形式を削除（存在する場合）
+    if grep -q "alias css=" "$BASHRC_FILE" 2>/dev/null; then
+        sed -i '/alias css=/d' "$BASHRC_FILE"
+        log_info "旧 alias css を削除しました"
+    fi
+    if grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
+        sed -i '/alias csm=/d' "$BASHRC_FILE"
+        log_info "旧 alias csm を削除しました"
     fi
 
-    # csm alias (家老・足軽ウィンドウの起動)
-    EXPECTED_CSM="alias csm='tmux attach-session -t multiagent'"
-    if ! grep -q "alias csm=" "$BASHRC_FILE" 2>/dev/null; then
-        if [ "$ALIAS_ADDED" = false ]; then
+    # css 関数
+    if ! grep -q "^css()" "$BASHRC_FILE" 2>/dev/null; then
+        if ! grep -q "multi-agent-shogun aliases" "$BASHRC_FILE" 2>/dev/null; then
             echo "" >> "$BASHRC_FILE"
             echo "# multi-agent-shogun aliases (added by first_setup.sh)" >> "$BASHRC_FILE"
         fi
-        echo "$EXPECTED_CSM" >> "$BASHRC_FILE"
-        log_info "alias csm を追加しました（家老・足軽ウィンドウの起動）"
-        ALIAS_ADDED=true
-    elif ! grep -qF "$EXPECTED_CSM" "$BASHRC_FILE" 2>/dev/null; then
-        if sed -i "s|alias csm=.*|$EXPECTED_CSM|" "$BASHRC_FILE" 2>/dev/null; then
-            log_info "alias csm を更新しました（パス変更検出）"
-        else
-            log_warn "alias csm の更新に失敗しました"
-        fi
+        echo "$CSS_FUNC" >> "$BASHRC_FILE"
+        log_info "css 関数を追加しました（将軍ウィンドウ — 自動掃除付き）"
         ALIAS_ADDED=true
     else
-        log_info "alias csm は既に正しく設定されています"
+        # 関数は存在する → 最新版に更新
+        sed -i '/^css()/d' "$BASHRC_FILE"
+        echo "$CSS_FUNC" >> "$BASHRC_FILE"
+        log_info "css 関数を更新しました"
+        ALIAS_ADDED=true
+    fi
+
+    # csm 関数
+    if ! grep -q "^csm()" "$BASHRC_FILE" 2>/dev/null; then
+        echo "$CSM_FUNC" >> "$BASHRC_FILE"
+        log_info "csm 関数を追加しました（家老・足軽ウィンドウ — 自動掃除付き）"
+        ALIAS_ADDED=true
+    else
+        sed -i '/^csm()/d' "$BASHRC_FILE"
+        echo "$CSM_FUNC" >> "$BASHRC_FILE"
+        log_info "csm 関数を更新しました"
+        ALIAS_ADDED=true
     fi
 else
     log_warn "$BASHRC_FILE が見つかりません"
 fi
 
 if [ "$ALIAS_ADDED" = true ]; then
-    log_success "alias設定を追加しました"
+    log_success "alias設定を追加しました（destroy-unattached 方式）"
     log_warn "alias を反映するには、以下のいずれかを実行してください："
     log_info "  1. source ~/.bashrc"
     log_info "  2. PowerShell で 'wsl --shutdown' してからターミナルを開き直す"

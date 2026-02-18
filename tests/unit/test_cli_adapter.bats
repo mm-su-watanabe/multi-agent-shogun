@@ -276,10 +276,10 @@ load_adapter_with() {
     [ "$result" = "claude --model opus --dangerously-skip-permissions" ]
 }
 
-@test "build_cli_command: codex → codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen" {
+@test "build_cli_command: codex + default model → codex --model sonnet ..." {
     load_adapter_with "${TEST_TMP}/settings_mixed.yaml"
     result=$(build_cli_command "ashigaru5")
-    [ "$result" = "codex --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
+    [ "$result" = "codex --model sonnet --dangerously-bypass-approvals-and-sandbox --no-alt-screen" ]
 }
 
 @test "build_cli_command: copilot → copilot --yolo" {
@@ -485,7 +485,7 @@ load_adapter_with() {
 @test "get_agent_model: no cli section karo → opus (default)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "karo")
-    [ "$result" = "opus" ]
+    [ "$result" = "sonnet" ]
 }
 
 @test "get_agent_model: no cli section ashigaru1 → sonnet (default)" {
@@ -497,7 +497,7 @@ load_adapter_with() {
 @test "get_agent_model: no cli section ashigaru5 → opus (default)" {
     load_adapter_with "${TEST_TMP}/settings_none.yaml"
     result=$(get_agent_model "ashigaru5")
-    [ "$result" = "opus" ]
+    [ "$result" = "sonnet" ]
 }
 
 @test "get_agent_model: YAML specified ashigaru1 → haiku (override)" {
